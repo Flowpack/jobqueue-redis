@@ -22,6 +22,11 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	protected $client;
 
 	/**
+	 * @var integer
+	 */
+	protected $defaultTimeout = 60;
+
+	/**
 	 * Constructor
 	 *
 	 * @param string $name
@@ -29,8 +34,11 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	 */
 	public function __construct($name, array $options = array()) {
 		$this->name = $name;
-			// TODO Filter options?
-		$this->client = new \Predis\Client($options);
+		if (isset($options['defaultTimeout'])) {
+			$this->defaultTimeout = (integer)$options['defaultTimeout'];
+		}
+		$clientOptions = isset($options['client']) ? $options['client'] : array();
+		$this->client = new \Predis\Client($options['client']);
 	}
 
 	/**
@@ -58,7 +66,8 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	 * @param int $timeout
 	 * @return \Jobqueue\Common\Message The received message or NULL if a timeout occured
 	 */
-	public function waitAndTake($timeout = 60) {
+	public function waitAndTake($timeout = NULL) {
+		$timeout !== NULL ? $timeout : $this->defaultTimeout;
 		$keyAndValue = $this->client->brpop("queue:{$this->name}:messages", $timeout);
 		$value = $keyAndValue[1];
 		if (is_string($value)) {
@@ -88,7 +97,8 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	 * @param int $timeout
 	 * @return \Jobqueue\Common\Queue\Message
 	 */
-	public function waitAndReserve($timeout = 60) {
+	public function waitAndReserve($timeout = NULL) {
+		$timeout !== NULL ? $timeout : $this->defaultTimeout;
 		$value = $this->client->brpoplpush("queue:{$this->name}:messages", "queue:{$this->name}:processing", $timeout);
 		if (is_string($value)) {
 			$message = $this->decodeMessage($value);
@@ -113,22 +123,34 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	}
 
 	/**
-	 * Peek for a message
+	 * Peek for messages
 	 *
-	 * @return \Jobqueue\Common\Message A message or NULL if no message was present
+	 * @param integer $limit
+	 * @return array Messages or empty array if no messages were present
 	 */
-	public function peek() {
-		$result = $this->client->lrange("queue:{$this->name}:messages", -1, -1);
+	public function peek($limit = 1) {
+		$result = $this->client->lrange("queue:{$this->name}:messages", -($limit), -1);
 		if (is_array($result) && count($result) > 0) {
-			$value = $result[0];
-			$message = $this->decodeMessage($value);
-
-				// The message is still published and should not be processed!
-			$message->setState(\Jobqueue\Common\Queue\Message::STATE_PUBLISHED);
-
-			return $message;
+			$messages = array();
+			foreach ($result as $value) {
+				$message = $this->decodeMessage($value);
+					// The message is still published and should not be processed!
+				$message->setState(\Jobqueue\Common\Queue\Message::STATE_PUBLISHED);
+				$messages[] = $message;
+			}
+			return $messages;
 		}
-		return NULL;
+		return array();
+	}
+
+	/**
+	 * Count messages in the queue
+	 *
+	 * @return integer
+	 */
+	public function count() {
+		$count = $this->client->llen("queue:{$this->name}:messages");
+		return $count;
 	}
 
 	/**
@@ -161,6 +183,16 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 		$message->setOriginalValue($value);
 		return $message;
 	}
+
+	/**
+	 *
+	 * @param string $identifier
+	 * @return \Jobqueue\Common\Queue\Message
+	 */
+	public function getMessage($identifier) {
+		return NULL;
+	}
+
 
 }
 ?>

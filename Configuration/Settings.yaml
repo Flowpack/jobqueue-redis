@@ -2,7 +2,8 @@ Jobqueue:
   Redis:
     testing:
       # Set to TRUE to enable functional testing against a Redis server
-      enabled: FALSE
-      hostname: 127.0.0.1
-      port: 6379
-      database: 15
+      enabled: TRUE
+      client:
+        hostname: 127.0.0.1
+        port: 6379
+        database: 15

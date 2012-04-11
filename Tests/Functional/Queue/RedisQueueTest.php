@@ -34,7 +34,7 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 
 		$this->queue = new \Jobqueue\Redis\Queue\RedisQueue('Test queue', $settings['testing']);
 
-		$client = new \Predis\Client($settings['testing']);
+		$client = new \Predis\Client($settings['testing']['client']);
 		$client->flushdb();
 	}
 
@@ -79,18 +79,21 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 	/**
 	 * @test
 	 */
-	public function peekReturnsNextMessageIfQueueHasMessages() {
+	public function peekReturnsNextMessagesIfQueueHasMessages() {
 		$message = new \Jobqueue\Common\Queue\Message('First message');
 		$this->queue->publish($message);
 		$message = new \Jobqueue\Common\Queue\Message('Another message');
 		$this->queue->publish($message);
 
-		$result = $this->queue->peek();
-		$this->assertNotNull($result, 'peek should return a message');
+		$results = $this->queue->peek(1);
+		$this->assertEquals(1, count($results), 'peek should return a message');
+		$result = $results[0];
 		$this->assertEquals('First message', $result->getPayload());
 		$this->assertEquals(\Jobqueue\Common\Queue\Message::STATE_PUBLISHED, $result->getState());
 
-		$result = $this->queue->peek();
+		$results = $this->queue->peek(1);
+		$this->assertEquals(1, count($results), 'peek should return a message again');
+		$result = $results[0];
 		$this->assertEquals('First message', $result->getPayload(), 'second peek should return the same message again');
 	}
 
@@ -99,7 +102,7 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 	 */
 	public function peekReturnsNullIfQueueHasNoMessage() {
 		$result = $this->queue->peek();
-		$this->assertNull($result, 'peek should not return a message');
+		$this->assertEquals(array(), $result, 'peek should not return a message');
 	}
 
 	/**
@@ -114,7 +117,7 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 		$this->assertEquals($message->getPayload(), $result->getPayload(), 'message should have payload as before');
 
 		$result = $this->queue->peek();
-		$this->assertNull($result, 'no message should be present in queue');
+		$this->assertEquals(array(), $result, 'no message should be present in queue');
 
 		$finishResult = $this->queue->finish($message);
 		$this->assertTrue($finishResult);
