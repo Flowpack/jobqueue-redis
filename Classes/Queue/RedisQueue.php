@@ -1,5 +1,5 @@
 <?php
-namespace Jobqueue\Redis\Queue;
+namespace TYPO3\Jobqueue\Redis\Queue;
 
 use TYPO3\FLOW3\Package\Package as BasePackage;
 use TYPO3\FLOW3\Annotations as FLOW3;
@@ -9,7 +9,7 @@ use TYPO3\FLOW3\Annotations as FLOW3;
  *
  * Depends on Predis as the PHP Redis client.
  */
-class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
+class RedisQueue implements \TYPO3\Jobqueue\Common\Queue\QueueInterface {
 
 	/**
 	 * @var string
@@ -44,10 +44,10 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	/**
 	 * Publish a message to the queue
 	 *
-	 * @param \Jobqueue\Common\Queue\Message $message
+	 * @param \TYPO3\Jobqueue\Common\Queue\Message $message
 	 * @return void
 	 */
-	public function publish(\Jobqueue\Common\Queue\Message $message) {
+	public function publish(\TYPO3\Jobqueue\Common\Queue\Message $message) {
 		if ($message->getIdentifier() !== NULL) {
 			$added = $this->client->sadd("queue:{$this->name}:ids", $message->getIdentifier());
 			if (!$added) {
@@ -56,7 +56,7 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 		}
 		$encodedMessage = $this->encodeMessage($message);
 		$this->client->lpush("queue:{$this->name}:messages", $encodedMessage);
-		$message->setState(\Jobqueue\Common\Queue\Message::STATE_PUBLISHED);
+		$message->setState(\TYPO3\Jobqueue\Common\Queue\Message::STATE_PUBLISHED);
 	}
 
 	/**
@@ -64,7 +64,7 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	 * (without safety queue)
 	 *
 	 * @param int $timeout
-	 * @return \Jobqueue\Common\Message The received message or NULL if a timeout occured
+	 * @return \TYPO3\Jobqueue\Common\Message The received message or NULL if a timeout occured
 	 */
 	public function waitAndTake($timeout = NULL) {
 		$timeout !== NULL ? $timeout : $this->defaultTimeout;
@@ -78,7 +78,7 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 			}
 
 				// The message is marked as done
-			$message->setState(\Jobqueue\Common\Queue\Message::STATE_DONE);
+			$message->setState(\TYPO3\Jobqueue\Common\Queue\Message::STATE_DONE);
 
 			return $message;
 		} else {
@@ -95,7 +95,7 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	 * the run start time in the message, so separate keys should be used for this.
 	 *
 	 * @param int $timeout
-	 * @return \Jobqueue\Common\Queue\Message
+	 * @return \TYPO3\Jobqueue\Common\Queue\Message
 	 */
 	public function waitAndReserve($timeout = NULL) {
 		$timeout !== NULL ? $timeout : $this->defaultTimeout;
@@ -114,10 +114,10 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	/**
 	 * Mark a message as finished
 	 *
-	 * @param \Jobqueue\Common\Queue\Message $message
+	 * @param \TYPO3\Jobqueue\Common\Queue\Message $message
 	 * @return boolean TRUE if the message could be removed
 	 */
-	public function finish(\Jobqueue\Common\Queue\Message $message) {
+	public function finish(\TYPO3\Jobqueue\Common\Queue\Message $message) {
 		$originalValue = $message->getOriginalValue();
 		return $this->client->lrem("queue:{$this->name}:processing", 0, $originalValue) > 0;
 	}
@@ -135,7 +135,7 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 			foreach ($result as $value) {
 				$message = $this->decodeMessage($value);
 					// The message is still published and should not be processed!
-				$message->setState(\Jobqueue\Common\Queue\Message::STATE_PUBLISHED);
+				$message->setState(\TYPO3\Jobqueue\Common\Queue\Message::STATE_PUBLISHED);
 				$messages[] = $message;
 			}
 			return $messages;
@@ -159,10 +159,10 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	 * Updates the original value property of the message to resemble the
 	 * encoded representation.
 	 *
-	 * @param \Jobqueue\Common\Queue\Message $message
+	 * @param \TYPO3\Jobqueue\Common\Queue\Message $message
 	 * @return string
 	 */
-	protected function encodeMessage(\Jobqueue\Common\Queue\Message $message) {
+	protected function encodeMessage(\TYPO3\Jobqueue\Common\Queue\Message $message) {
 		$value = json_encode($message->toArray());
 		$message->setOriginalValue($value);
 		return $value;
@@ -172,11 +172,11 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	 * Decode a message from a string representation
 	 *
 	 * @param string $value
-	 * @return \Jobqueue\Common\Queue\Message
+	 * @return \TYPO3\Jobqueue\Common\Queue\Message
 	 */
 	protected function decodeMessage($value) {
 		$decodedMessage = json_decode($value, TRUE);
-		$message = new \Jobqueue\Common\Queue\Message($decodedMessage['payload']);
+		$message = new \TYPO3\Jobqueue\Common\Queue\Message($decodedMessage['payload']);
 		if (isset($decodedMessage['identifier'])) {
 			$message->setIdentifier($decodedMessage['identifier']);
 		}
@@ -187,7 +187,7 @@ class RedisQueue implements \Jobqueue\Common\Queue\QueueInterface {
 	/**
 	 *
 	 * @param string $identifier
-	 * @return \Jobqueue\Common\Queue\Message
+	 * @return \TYPO3\Jobqueue\Common\Queue\Message
 	 */
 	public function getMessage($identifier) {
 		return NULL;

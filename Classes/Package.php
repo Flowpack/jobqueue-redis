@@ -1,5 +1,5 @@
 <?php
-namespace Jobqueue\Redis;
+namespace TYPO3\Jobqueue\Redis;
 
 use TYPO3\FLOW3\Package\Package as BasePackage;
 use TYPO3\FLOW3\Annotations as FLOW3;
