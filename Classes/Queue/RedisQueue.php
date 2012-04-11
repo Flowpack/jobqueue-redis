@@ -38,7 +38,7 @@ class RedisQueue implements \TYPO3\Jobqueue\Common\Queue\QueueInterface {
 			$this->defaultTimeout = (integer)$options['defaultTimeout'];
 		}
 		$clientOptions = isset($options['client']) ? $options['client'] : array();
-		$this->client = new \Predis\Client($options['client']);
+		$this->client = new \Predis\Client($clientOptions);
 	}
 
 	/**
@@ -119,7 +119,11 @@ class RedisQueue implements \TYPO3\Jobqueue\Common\Queue\QueueInterface {
 	 */
 	public function finish(\TYPO3\Jobqueue\Common\Queue\Message $message) {
 		$originalValue = $message->getOriginalValue();
-		return $this->client->lrem("queue:{$this->name}:processing", 0, $originalValue) > 0;
+		$success = $this->client->lrem("queue:{$this->name}:processing", 0, $originalValue) > 0;
+		if ($success) {
+			$message->setState(\TYPO3\Jobqueue\Common\Queue\Message::STATE_DONE);
+		}
+		return $success;
 	}
 
 	/**
