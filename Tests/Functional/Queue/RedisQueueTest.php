@@ -43,7 +43,7 @@ class RedisQueueTest extends \TYPO3\Flow\Tests\FunctionalTestCase {
 	 */
 	public function publishAndWaitWithMessageWorks() {
 		$message = new \Flowpack\JobQueue\Common\Queue\Message('Yeah, tell someone it works!');
-		$this->queue->publish($message);
+		$this->queue->submit($message);
 
 		$result = $this->queue->waitAndTake(1);
 		$this->assertNotNull($result, 'wait should receive message');
@@ -64,8 +64,8 @@ class RedisQueueTest extends \TYPO3\Flow\Tests\FunctionalTestCase {
 	public function identifierMakesMessagesUnique() {
 		$message = new \Flowpack\JobQueue\Common\Queue\Message('Yeah, tell someone it works!', 'test.message');
 		$identicalMessage = new \Flowpack\JobQueue\Common\Queue\Message('Yeah, tell someone it works!', 'test.message');
-		$this->queue->publish($message);
-		$this->queue->publish($identicalMessage);
+		$this->queue->submit($message);
+		$this->queue->submit($identicalMessage);
 
 		$this->assertEquals(\Flowpack\JobQueue\Common\Queue\Message::STATE_NEW, $identicalMessage->getState());
 
@@ -81,9 +81,9 @@ class RedisQueueTest extends \TYPO3\Flow\Tests\FunctionalTestCase {
 	 */
 	public function peekReturnsNextMessagesIfQueueHasMessages() {
 		$message = new \Flowpack\JobQueue\Common\Queue\Message('First message');
-		$this->queue->publish($message);
+		$this->queue->submit($message);
 		$message = new \Flowpack\JobQueue\Common\Queue\Message('Another message');
-		$this->queue->publish($message);
+		$this->queue->submit($message);
 
 		$results = $this->queue->peek(1);
 		$this->assertEquals(1, count($results), 'peek should return a message');
@@ -110,7 +110,7 @@ class RedisQueueTest extends \TYPO3\Flow\Tests\FunctionalTestCase {
 	 */
 	public function waitAndReserveWithFinishRemovesMessage() {
 		$message = new \Flowpack\JobQueue\Common\Queue\Message('First message');
-		$this->queue->publish($message);
+		$this->queue->submit($message);
 
 		$result = $this->queue->waitAndReserve(1);
 		$this->assertNotNull($result, 'waitAndReserve should receive message');

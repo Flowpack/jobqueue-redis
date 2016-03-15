@@ -47,7 +47,7 @@ class RedisQueue implements \Flowpack\JobQueue\Common\Queue\QueueInterface {
 	 * @param \Flowpack\JobQueue\Common\Queue\Message $message
 	 * @return void
 	 */
-	public function publish(\Flowpack\JobQueue\Common\Queue\Message $message) {
+	public function submit(\Flowpack\JobQueue\Common\Queue\Message $message) {
 		if ($message->getIdentifier() !== NULL) {
 			$added = $this->client->sadd("queue:{$this->name}:ids", $message->getIdentifier());
 			if (!$added) {
