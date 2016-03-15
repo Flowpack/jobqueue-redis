@@ -1,13 +1,13 @@
 <?php
-namespace TYPO3\Jobqueue\Redis;
+namespace Flowpack\JobQueue\Redis;
 
-use TYPO3\FLOW3\Package\Package as BasePackage;
-use TYPO3\FLOW3\Annotations as FLOW3;
+use TYPO3\Flow\Package\Package as BasePackage;
+use TYPO3\Flow\Annotations as Flow;
 
 /**
  * Package base class of the Jobqueue.Redis package.
  *
- * @FLOW3\Scope("singleton")
+ * @Flow\Scope("singleton")
  */
 class Package extends BasePackage {
 

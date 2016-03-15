@@ -1,8 +1,8 @@
 <?php
-namespace TYPO3\Jobqueue\Redis\Tests\Functional\Queue;
+namespace Flowpack\JobQueue\Redis\Tests\Functional\Queue;
 
 /*                                                                        *
- * This script belongs to the FLOW3 package "Jobqueue.Redis".                *
+ * This script belongs to the Flow package "Jobqueue.Redis".                *
  *                                                                        *
  * It is free software; you can redistribute it and/or modify it under    *
  * the terms of the GNU General Public License, either version 3 of the   *
@@ -14,10 +14,10 @@ namespace TYPO3\Jobqueue\Redis\Tests\Functional\Queue;
 /**
  * Functional test for RedisQueue
  */
-class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
+class RedisQueueTest extends \TYPO3\Flow\Tests\FunctionalTestCase {
 
 	/**
-	 * @var \TYPO3\Jobqueue\Redis\Queue\RedisQueue
+	 * @var \Flowpack\JobQueue\Redis\Queue\RedisQueue
 	 */
 	protected $queue;
 
@@ -26,13 +26,13 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 	 */
 	public function setUp() {
 		parent::setUp();
-		$configurationManager = $this->objectManager->get('TYPO3\FLOW3\Configuration\ConfigurationManager');
-		$settings = $configurationManager->getConfiguration(\TYPO3\FLOW3\Configuration\ConfigurationManager::CONFIGURATION_TYPE_SETTINGS, 'TYPO3.Jobqueue.Redis');
+		$configurationManager = $this->objectManager->get('TYPO3\Flow\Configuration\ConfigurationManager');
+		$settings = $configurationManager->getConfiguration(\TYPO3\Flow\Configuration\ConfigurationManager::CONFIGURATION_TYPE_SETTINGS, 'TYPO3.Jobqueue.Redis');
 		if (!isset($settings['testing']['enabled']) || $settings['testing']['enabled'] !== TRUE) {
 			$this->markTestSkipped('Test database is not configured');
 		}
 
-		$this->queue = new \TYPO3\Jobqueue\Redis\Queue\RedisQueue('Test queue', $settings['testing']);
+		$this->queue = new \Flowpack\JobQueue\Redis\Queue\RedisQueue('Test queue', $settings['testing']);
 
 		$client = new \Predis\Client($settings['testing']['client']);
 		$client->flushdb();
@@ -42,7 +42,7 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 	 * @test
 	 */
 	public function publishAndWaitWithMessageWorks() {
-		$message = new \TYPO3\Jobqueue\Common\Queue\Message('Yeah, tell someone it works!');
+		$message = new \Flowpack\JobQueue\Common\Queue\Message('Yeah, tell someone it works!');
 		$this->queue->publish($message);
 
 		$result = $this->queue->waitAndTake(1);
@@ -62,12 +62,12 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 	 * @test
 	 */
 	public function identifierMakesMessagesUnique() {
-		$message = new \TYPO3\Jobqueue\Common\Queue\Message('Yeah, tell someone it works!', 'test.message');
-		$identicalMessage = new \TYPO3\Jobqueue\Common\Queue\Message('Yeah, tell someone it works!', 'test.message');
+		$message = new \Flowpack\JobQueue\Common\Queue\Message('Yeah, tell someone it works!', 'test.message');
+		$identicalMessage = new \Flowpack\JobQueue\Common\Queue\Message('Yeah, tell someone it works!', 'test.message');
 		$this->queue->publish($message);
 		$this->queue->publish($identicalMessage);
 
-		$this->assertEquals(\TYPO3\Jobqueue\Common\Queue\Message::STATE_NEW, $identicalMessage->getState());
+		$this->assertEquals(\Flowpack\JobQueue\Common\Queue\Message::STATE_NEW, $identicalMessage->getState());
 
 		$result = $this->queue->waitAndTake(1);
 		$this->assertNotNull($result, 'wait should receive message');
@@ -80,16 +80,16 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 	 * @test
 	 */
 	public function peekReturnsNextMessagesIfQueueHasMessages() {
-		$message = new \TYPO3\Jobqueue\Common\Queue\Message('First message');
+		$message = new \Flowpack\JobQueue\Common\Queue\Message('First message');
 		$this->queue->publish($message);
-		$message = new \TYPO3\Jobqueue\Common\Queue\Message('Another message');
+		$message = new \Flowpack\JobQueue\Common\Queue\Message('Another message');
 		$this->queue->publish($message);
 
 		$results = $this->queue->peek(1);
 		$this->assertEquals(1, count($results), 'peek should return a message');
 		$result = $results[0];
 		$this->assertEquals('First message', $result->getPayload());
-		$this->assertEquals(\TYPO3\Jobqueue\Common\Queue\Message::STATE_PUBLISHED, $result->getState());
+		$this->assertEquals(\Flowpack\JobQueue\Common\Queue\Message::STATE_PUBLISHED, $result->getState());
 
 		$results = $this->queue->peek(1);
 		$this->assertEquals(1, count($results), 'peek should return a message again');
@@ -109,7 +109,7 @@ class RedisQueueTest extends \TYPO3\FLOW3\Tests\FunctionalTestCase {
 	 * @test
 	 */
 	public function waitAndReserveWithFinishRemovesMessage() {
-		$message = new \TYPO3\Jobqueue\Common\Queue\Message('First message');
+		$message = new \Flowpack\JobQueue\Common\Queue\Message('First message');
 		$this->queue->publish($message);
 
 		$result = $this->queue->waitAndReserve(1);
