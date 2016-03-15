@@ -89,7 +89,7 @@ class RedisQueueTest extends \TYPO3\Flow\Tests\FunctionalTestCase {
 		$this->assertEquals(1, count($results), 'peek should return a message');
 		$result = $results[0];
 		$this->assertEquals('First message', $result->getPayload());
-		$this->assertEquals(\Flowpack\JobQueue\Common\Queue\Message::STATE_PUBLISHED, $result->getState());
+		$this->assertEquals(\Flowpack\JobQueue\Common\Queue\Message::STATE_SUBMITTED, $result->getState());
 
 		$results = $this->queue->peek(1);
 		$this->assertEquals(1, count($results), 'peek should return a message again');

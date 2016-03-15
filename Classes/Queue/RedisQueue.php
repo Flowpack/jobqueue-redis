@@ -56,7 +56,7 @@ class RedisQueue implements \Flowpack\JobQueue\Common\Queue\QueueInterface {
 		}
 		$encodedMessage = $this->encodeMessage($message);
 		$this->client->lpush("queue:{$this->name}:messages", $encodedMessage);
-		$message->setState(\Flowpack\JobQueue\Common\Queue\Message::STATE_PUBLISHED);
+		$message->setState(\Flowpack\JobQueue\Common\Queue\Message::STATE_SUBMITTED);
 	}
 
 	/**
@@ -139,7 +139,7 @@ class RedisQueue implements \Flowpack\JobQueue\Common\Queue\QueueInterface {
 			foreach ($result as $value) {
 				$message = $this->decodeMessage($value);
 					// The message is still published and should not be processed!
-				$message->setState(\Flowpack\JobQueue\Common\Queue\Message::STATE_PUBLISHED);
+				$message->setState(\Flowpack\JobQueue\Common\Queue\Message::STATE_SUBMITTED);
 				$messages[] = $message;
 			}
 			return $messages;
