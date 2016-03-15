@@ -1,0 +1,15 @@
+{
+  "name": "flowpack/jobqueue-redis",
+  "type": "typo3-flow-package",
+  "description": "Redis adapter for a JobQueue in Flow applications.",
+  "license": "MIT",
+  "require": {
+    "flowpack/jobqueue-common": "dev-master",
+    "predis/predis": "~1.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Flowpack\\JobQueue\\Redis\\": "Classes"
+    }
+  }
+}
