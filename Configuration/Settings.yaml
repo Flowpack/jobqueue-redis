@@ -1,5 +1,5 @@
-TYPO3:
-  Jobqueue:
+Flowpack:
+  JobQueue:
     Redis:
       testing:
         # Set to TRUE to enable functional testing against a Redis server
