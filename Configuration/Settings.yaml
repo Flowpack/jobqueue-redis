@@ -1,10 +1,10 @@
-TYPO3:
-  Jobqueue:
+Flowpack:
+  JobQueue:
     Redis:
       testing:
         # Set to TRUE to enable functional testing against a Redis server
         # enabled: TRUE
         client:
-          hostname: 127.0.0.1
+          host: 127.0.0.1
           port: 6379
           database: 15
