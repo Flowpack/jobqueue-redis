@@ -18,7 +18,7 @@ use Predis\Client as PredisClient;
 /**
  * A queue implementation using Redis as the queue backend
  *
- * Depends on Predis as the PHP Redis client.
+ * Depends on the php-redis extension.
  */
 class RedisQueue implements QueueInterface
 {
@@ -29,7 +29,7 @@ class RedisQueue implements QueueInterface
     protected $name;
 
     /**
-     * @var PredisClient
+     * @var \Redis
      */
     protected $client;
 
@@ -51,7 +51,13 @@ class RedisQueue implements QueueInterface
             $this->defaultTimeout = (integer)$options['defaultTimeout'];
         }
         $clientOptions = isset($options['client']) ? $options['client'] : array();
-        $this->client = new PredisClient($clientOptions);
+        $host = isset($clientOptions['host']) ? $clientOptions['host'] : '127.0.0.1';
+        $port = isset($clientOptions['port']) ? $clientOptions['port'] : 6379;
+        $database = isset($clientOptions['database']) ? $clientOptions['database'] : 0;
+
+        $this->client = new \Redis();
+        $this->client->connect($host, $port);
+        $this->client->select($database);
     }
 
     /**
@@ -62,14 +68,14 @@ class RedisQueue implements QueueInterface
      */
     public function submit(Message $message)
     {
-        if ($message->getIdentifier() !== NULL) {
-            $added = $this->client->sadd("queue:{$this->name}:ids", $message->getIdentifier());
+        if ($message->getIdentifier() !== null) {
+            $added = $this->client->sAdd("queue:{$this->name}:ids", $message->getIdentifier());
             if (!$added) {
                 return;
             }
         }
         $encodedMessage = $this->encodeMessage($message);
-        $this->client->lpush("queue:{$this->name}:messages", $encodedMessage);
+        $this->client->lPush("queue:{$this->name}:messages", $encodedMessage);
         $message->setState(Message::STATE_SUBMITTED);
     }
 
@@ -80,18 +86,18 @@ class RedisQueue implements QueueInterface
      * @param int $timeout
      * @return Message The received message or NULL if a timeout occurred
      */
-    public function waitAndTake($timeout = NULL)
+    public function waitAndTake($timeout = null)
     {
-        if ($timeout === NULL) {
+        if ($timeout === null) {
             $timeout = $this->defaultTimeout;
         }
-        $keyAndValue = $this->client->brpop("queue:{$this->name}:messages", $timeout);
-        $value = $keyAndValue[1];
+        $keyAndValue = $this->client->brPop("queue:{$this->name}:messages", $timeout);
+        $value = isset($keyAndValue[1]) ? $keyAndValue[1] : null;
         if (is_string($value)) {
             $message = $this->decodeMessage($value);
 
-            if ($message->getIdentifier() !== NULL) {
-                $this->client->srem("queue:{$this->name}:ids", $message->getIdentifier());
+            if ($message->getIdentifier() !== null) {
+                $this->client->sRem("queue:{$this->name}:ids", $message->getIdentifier());
             }
 
             // The message is marked as done
@@ -99,7 +105,7 @@ class RedisQueue implements QueueInterface
 
             return $message;
         } else {
-            return NULL;
+            return null;
         }
     }
 
@@ -114,20 +120,20 @@ class RedisQueue implements QueueInterface
      * @param int $timeout
      * @return Message
      */
-    public function waitAndReserve($timeout = NULL)
+    public function waitAndReserve($timeout = null)
     {
-        if ($timeout === NULL) {
+        if ($timeout === null) {
             $timeout = $this->defaultTimeout;
         }
         $value = $this->client->brpoplpush("queue:{$this->name}:messages", "queue:{$this->name}:processing", $timeout);
         if (is_string($value)) {
             $message = $this->decodeMessage($value);
-            if ($message->getIdentifier() !== NULL) {
-                $this->client->srem("queue:{$this->name}:ids", $message->getIdentifier());
+            if ($message->getIdentifier() !== null) {
+                $this->client->sRem("queue:{$this->name}:ids", $message->getIdentifier());
             }
             return $message;
         } else {
-            return NULL;
+            return null;
         }
     }
 
@@ -140,7 +146,7 @@ class RedisQueue implements QueueInterface
     public function finish(Message $message)
     {
         $originalValue = $message->getOriginalValue();
-        $success = $this->client->lrem("queue:{$this->name}:processing", 0, $originalValue) > 0;
+        $success = $this->client->lRem("queue:{$this->name}:processing", $originalValue, 0) > 0;
         if ($success) {
             $message->setState(Message::STATE_DONE);
         }
@@ -155,7 +161,7 @@ class RedisQueue implements QueueInterface
      */
     public function peek($limit = 1)
     {
-        $result = $this->client->lrange("queue:{$this->name}:messages", -($limit), -1);
+        $result = $this->client->lRange("queue:{$this->name}:messages", -($limit), -1);
         if (is_array($result) && count($result) > 0) {
             $messages = array();
             foreach ($result as $value) {
@@ -176,7 +182,7 @@ class RedisQueue implements QueueInterface
      */
     public function count()
     {
-        $count = $this->client->llen("queue:{$this->name}:messages");
+        $count = $this->client->lLen("queue:{$this->name}:messages");
         return $count;
     }
 
@@ -204,7 +210,7 @@ class RedisQueue implements QueueInterface
      */
     protected function decodeMessage($value)
     {
-        $decodedMessage = json_decode($value, TRUE);
+        $decodedMessage = json_decode($value, true);
         $message = new Message($decodedMessage['payload']);
         if (isset($decodedMessage['identifier'])) {
             $message->setIdentifier($decodedMessage['identifier']);
@@ -220,8 +226,7 @@ class RedisQueue implements QueueInterface
      */
     public function getMessage($identifier)
     {
-        return NULL;
+        return null;
     }
-
 
 }

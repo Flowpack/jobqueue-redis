@@ -42,8 +42,14 @@ class RedisQueueTest extends FunctionalTestCase
 
         $this->queue = new RedisQueue('Test queue', $settings['testing']);
 
-        $client = new PredisClient($settings['testing']['client']);
-        $client->flushdb();
+        $client = new \Redis();
+        if (!$client->connect($settings['testing']['client']['host'], $settings['testing']['client']['port'])) {
+            $this->fail('Could not connect to Redis');
+        }
+        if (!$client->select($settings['testing']['client']['database'])) {
+            $this->fail('Could not select database');
+        }
+        $client->flushDB();
     }
 
     /**

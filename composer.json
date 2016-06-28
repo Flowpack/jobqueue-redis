@@ -4,8 +4,9 @@
     "description": "Implements concrete Queue for the redis work queue. Requires the packages flowpack/jobqueue-common and predis/predis package to be installed.",
     "license": "MIT",
     "require": {
-        "flowpack/jobqueue-common": "*",
-        "predis/predis": "1.1.*"
+        "php-redis": "*",
+
+        "flowpack/jobqueue-common": "*"
     },
     "autoload": {
         "psr-4": {
