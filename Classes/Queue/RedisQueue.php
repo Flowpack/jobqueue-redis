@@ -13,6 +13,7 @@ namespace Flowpack\JobQueue\Redis\Queue;
 
 use Flowpack\JobQueue\Common\Queue\Message;
 use Flowpack\JobQueue\Common\Queue\QueueInterface;
+use TYPO3\Flow\Utility\Algorithms;
 
 /**
  * A queue implementation using Redis as the queue backend
@@ -38,18 +39,16 @@ class RedisQueue implements QueueInterface
     protected $defaultTimeout = 60;
 
     /**
-     * Constructor
-     *
      * @param string $name
      * @param array $options
      */
-    public function __construct($name, array $options = array())
+    public function __construct($name, array $options = [])
     {
         $this->name = $name;
         if (isset($options['defaultTimeout'])) {
             $this->defaultTimeout = (integer)$options['defaultTimeout'];
         }
-        $clientOptions = isset($options['client']) ? $options['client'] : array();
+        $clientOptions = isset($options['client']) ? $options['client'] : [];
         $host = isset($clientOptions['host']) ? $clientOptions['host'] : '127.0.0.1';
         $port = isset($clientOptions['port']) ? $clientOptions['port'] : 6379;
         $database = isset($clientOptions['database']) ? $clientOptions['database'] : 0;
@@ -60,30 +59,30 @@ class RedisQueue implements QueueInterface
     }
 
     /**
-     * Submit a message to the queue
-     *
-     * @param Message $message
-     * @return void
+     * @inheritdoc
      */
-    public function submit(Message $message)
+    public function getName()
     {
-        if ($message->getIdentifier() !== null) {
-            $added = $this->client->sAdd("queue:{$this->name}:ids", $message->getIdentifier());
-            if (!$added) {
-                return;
-            }
-        }
-        $encodedMessage = $this->encodeMessage($message);
-        $this->client->lPush("queue:{$this->name}:messages", $encodedMessage);
-        $message->setState(Message::STATE_SUBMITTED);
+        return $this->name;
     }
 
     /**
-     * Wait for a message in the queue and return the message for processing
-     * (without safety queue)
-     *
-     * @param int $timeout
-     * @return Message The received message or NULL if a timeout occurred
+     * @inheritdoc
+     */
+    public function submit($payload, array $options = [])
+    {
+        $messageId = Algorithms::generateUUID();
+        $idStored = $this->client->hSet("queue:{$this->name}:ids", $messageId, json_encode($payload));
+        if ($idStored === 0) {
+            return null;
+        }
+
+        $this->client->lPush("queue:{$this->name}:messages", $messageId);
+        return $messageId;
+    }
+
+    /**
+     * @inheritdoc
      */
     public function waitAndTake($timeout = null)
     {
@@ -91,141 +90,113 @@ class RedisQueue implements QueueInterface
             $timeout = $this->defaultTimeout;
         }
         $keyAndValue = $this->client->brPop("queue:{$this->name}:messages", $timeout);
-        $value = isset($keyAndValue[1]) ? $keyAndValue[1] : null;
-        if (is_string($value)) {
-            $message = $this->decodeMessage($value);
-
-            if ($message->getIdentifier() !== null) {
-                $this->client->sRem("queue:{$this->name}:ids", $message->getIdentifier());
-            }
-
-            // The message is marked as done
-            $message->setState(Message::STATE_DONE);
-
-            return $message;
-        } else {
+        $messageId = isset($keyAndValue[1]) ? $keyAndValue[1] : null;
+        if ($messageId === null) {
             return null;
         }
+        $message = $this->getMessageById($messageId);
+        if ($message !== null) {
+            $this->client->hDel("queue:{$this->name}:ids", $messageId);
+        }
+        return $message;
     }
 
     /**
-     * Wait for a message in the queue and save the message to a safety queue
-     *
-     * TODO: Idea for implementing a TTR (time to run) with monitoring of safety queue. E.g.
-     * use different queue names with encoded times? With "brpoplpush" we cannot modify the
-     * queued item on transfer to the safety queue and we cannot update a timestamp to mark
-     * the run start time in the message, so separate keys should be used for this.
-     *
-     * @param int $timeout
-     * @return Message
+     * @inheritdoc
      */
     public function waitAndReserve($timeout = null)
     {
         if ($timeout === null) {
             $timeout = $this->defaultTimeout;
         }
-        $value = $this->client->brpoplpush("queue:{$this->name}:messages", "queue:{$this->name}:processing", $timeout);
-        if (is_string($value)) {
-            $message = $this->decodeMessage($value);
-            if ($message->getIdentifier() !== null) {
-                $this->client->sRem("queue:{$this->name}:ids", $message->getIdentifier());
-            }
-            return $message;
-        } else {
-            return null;
-        }
+        $messageId = $this->client->brpoplpush("queue:{$this->name}:messages", "queue:{$this->name}:processing", $timeout);
+        return $this->getMessageById($messageId);
     }
 
     /**
-     * Mark a message as finished
-     *
-     * @param Message $message
-     * @return boolean TRUE if the message could be removed
+     * @inheritdoc
      */
-    public function finish(Message $message)
+    public function release($messageId, array $options = [])
     {
-        $originalValue = $message->getOriginalValue();
-        $success = $this->client->lRem("queue:{$this->name}:processing", $originalValue, 0) > 0;
-        if ($success) {
-            $message->setState(Message::STATE_DONE);
-        }
-        return $success;
+        $this->client->lRem("queue:{$this->name}:processing", $messageId, 0);
+        $numberOfFailures = (integer)$this->client->hGet("queue:{$this->name}:failures", $messageId);
+        $this->client->hSet("queue:{$this->name}:failures", $messageId, $numberOfFailures + 1);
+        $this->client->lPush("queue:{$this->name}:messages", $messageId);
     }
 
     /**
-     * Peek for messages
-     *
-     * @param integer $limit
-     * @return Message[] Messages or empty array if no messages were present
+     * @inheritdoc
+     */
+    public function abort($messageId)
+    {
+        $numberOfRemoved = $this->client->lRem("queue:{$this->name}:processing", $messageId, 0);
+        if ($numberOfRemoved === 1) {
+            $this->client->lPush("queue:{$this->name}:failed", $messageId);
+        }
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function finish($messageId)
+    {
+        $this->client->hDel("queue:{$this->name}:ids", $messageId);
+        $this->client->hDel("queue:{$this->name}:failures", $messageId);
+        return $this->client->lRem("queue:{$this->name}:processing", $messageId, 0) > 0;
+    }
+
+    /**
+     * @inheritdoc
      */
     public function peek($limit = 1)
     {
         $result = $this->client->lRange("queue:{$this->name}:messages", -($limit), -1);
-        if (is_array($result) && count($result) > 0) {
-            $messages = array();
-            foreach ($result as $value) {
-                $message = $this->decodeMessage($value);
-                // The message is still submitted and should not be processed!
-                $message->setState(Message::STATE_SUBMITTED);
-                $messages[] = $message;
-            }
-            return $messages;
+        if (!is_array($result) || count($result) === 0) {
+            return [];
         }
-        return array();
+        $messages = [];
+        foreach ($result as $messageId) {
+            $encodedPayload = $this->client->hGet("queue:{$this->name}:ids", $messageId);
+            $messages[] = new Message($messageId, json_decode($encodedPayload, true));
+        }
+        return $messages;
     }
 
     /**
-     * Count messages in the queue
-     *
-     * @return integer
+     * @inheritdoc
      */
     public function count()
     {
-        $count = $this->client->lLen("queue:{$this->name}:messages");
-        return $count;
+        return $this->client->lLen("queue:{$this->name}:messages");
     }
 
     /**
-     * Encode a message
-     *
-     * Updates the original value property of the message to resemble the
-     * encoded representation.
-     *
-     * @param Message $message
-     * @return string
+     * @return void
      */
-    protected function encodeMessage(Message $message)
+    public function setUp()
     {
-        $value = json_encode($message->toArray());
-        $message->setOriginalValue($value);
-        return $value;
+        // TODO
     }
 
     /**
-     * Decode a message from a string representation
-     *
-     * @param string $value
+     * @inheritdoc
+     */
+    public function flush()
+    {
+        $this->client->flushDB();
+    }
+
+    /**
+     * @param string $messageId
      * @return Message
      */
-    protected function decodeMessage($value)
+    protected function getMessageById($messageId)
     {
-        $decodedMessage = json_decode($value, true);
-        $message = new Message($decodedMessage['payload']);
-        if (isset($decodedMessage['identifier'])) {
-            $message->setIdentifier($decodedMessage['identifier']);
+        if (!is_string($messageId)) {
+            return null;
         }
-        $message->setOriginalValue($value);
-        return $message;
+        $encodedPayload = $this->client->hGet("queue:{$this->name}:ids", $messageId);
+        $numberOfFailures = (integer)$this->client->hGet("queue:{$this->name}:failures", $messageId);
+        return new Message($messageId, json_decode($encodedPayload, true), $numberOfFailures);
     }
-
-    /**
-     *
-     * @param string $identifier
-     * @return Message
-     */
-    public function getMessage($identifier)
-    {
-        return null;
-    }
-
 }
