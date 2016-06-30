@@ -13,7 +13,6 @@ namespace Flowpack\JobQueue\Redis\Queue;
 
 use Flowpack\JobQueue\Common\Queue\Message;
 use Flowpack\JobQueue\Common\Queue\QueueInterface;
-use Predis\Client as PredisClient;
 
 /**
  * A queue implementation using Redis as the queue backend
