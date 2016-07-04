@@ -35,7 +35,27 @@ class RedisQueue implements QueueInterface
     /**
      * @var integer
      */
-    protected $defaultTimeout = 60;
+    protected $defaultTimeout = 30;
+
+    /**
+     * @var array
+     */
+    protected $clientOptions;
+
+    /**
+     * @var float
+     */
+    protected $reconnectDelay = 1.0;
+
+    /**
+     * @var float
+     */
+    protected $reconnectDecay = 1.5;
+
+    /**
+     * @var float
+     */
+    protected $maxReconnectDelay = 30.0;
 
     /**
      * Constructor
@@ -49,14 +69,12 @@ class RedisQueue implements QueueInterface
         if (isset($options['defaultTimeout'])) {
             $this->defaultTimeout = (integer)$options['defaultTimeout'];
         }
-        $clientOptions = isset($options['client']) ? $options['client'] : array();
-        $host = isset($clientOptions['host']) ? $clientOptions['host'] : '127.0.0.1';
-        $port = isset($clientOptions['port']) ? $clientOptions['port'] : 6379;
-        $database = isset($clientOptions['database']) ? $clientOptions['database'] : 0;
+        $this->clientOptions = isset($options['client']) ? $options['client'] : array();
 
         $this->client = new \Redis();
-        $this->client->connect($host, $port);
-        $this->client->select($database);
+        if (!$this->connectClient()) {
+            throw new \Flowpack\JobQueue\Common\Exception('Could not connect to Redis', 1467382685);
+        }
     }
 
     /**
@@ -67,6 +85,7 @@ class RedisQueue implements QueueInterface
      */
     public function submit(Message $message)
     {
+        $this->checkClientConnection();
         if ($message->getIdentifier() !== null) {
             $added = $this->client->sAdd("queue:{$this->name}:ids", $message->getIdentifier());
             if (!$added) {
@@ -90,6 +109,7 @@ class RedisQueue implements QueueInterface
         if ($timeout === null) {
             $timeout = $this->defaultTimeout;
         }
+        $this->checkClientConnection();
         $keyAndValue = $this->client->brPop("queue:{$this->name}:messages", $timeout);
         $value = isset($keyAndValue[1]) ? $keyAndValue[1] : null;
         if (is_string($value)) {
@@ -124,6 +144,7 @@ class RedisQueue implements QueueInterface
         if ($timeout === null) {
             $timeout = $this->defaultTimeout;
         }
+        $this->checkClientConnection();
         $value = $this->client->brpoplpush("queue:{$this->name}:messages", "queue:{$this->name}:processing", $timeout);
         if (is_string($value)) {
             $message = $this->decodeMessage($value);
@@ -144,6 +165,7 @@ class RedisQueue implements QueueInterface
      */
     public function finish(Message $message)
     {
+        $this->checkClientConnection();
         $originalValue = $message->getOriginalValue();
         $success = $this->client->lRem("queue:{$this->name}:processing", $originalValue, 0) > 0;
         if ($success) {
@@ -160,6 +182,7 @@ class RedisQueue implements QueueInterface
      */
     public function peek($limit = 1)
     {
+        $this->checkClientConnection();
         $result = $this->client->lRange("queue:{$this->name}:messages", -($limit), -1);
         if (is_array($result) && count($result) > 0) {
             $messages = array();
@@ -181,6 +204,7 @@ class RedisQueue implements QueueInterface
      */
     public function count()
     {
+        $this->checkClientConnection();
         $count = $this->client->lLen("queue:{$this->name}:messages");
         return $count;
     }
@@ -226,6 +250,56 @@ class RedisQueue implements QueueInterface
     public function getMessage($identifier)
     {
         return null;
+    }
+
+    /**
+     * Check if the Redis client connection is still up and reconnect if Redis was disconnected
+     */
+    protected function checkClientConnection()
+    {
+        $reconnect = false;
+        try {
+            $pong = $this->client->ping();
+            if ($pong === false) {
+                $reconnect = true;
+            }
+        } catch (\RedisException $e) {
+            $reconnect = true;
+        }
+        if ($reconnect) {
+            if (!$this->connectClient()) {
+                throw new \Flowpack\JobQueue\Common\Exception('Could not connect to Redis', 1467382685);
+            }
+        }
+    }
+
+    /**
+     * Connect the Redis client
+     *
+     * Will back off if the connection could not be established (e.g. Redis server gone away / restarted) until max
+     * reconnect delay is achieved. This prevents busy waiting for the Redis connection when used from a job worker.
+     *
+     * @return bool True if the client could connect to Redis
+     */
+    protected function connectClient()
+    {
+        $host = isset($this->clientOptions['host']) ? $this->clientOptions['host'] : '127.0.0.1';
+        $port = isset($this->clientOptions['port']) ? $this->clientOptions['port'] : 6379;
+        $database = isset($this->clientOptions['database']) ? $this->clientOptions['database'] : 0;
+
+        // The connection read timeout should be higher than the timeout for blocking operations!
+        $timeout = isset($this->clientOptions['timeout']) ? $this->clientOptions['timeout'] : round($this->defaultTimeout * 1.5);
+        $connected = $this->client->connect($host, $port, $timeout) && $this->client->select($database);
+
+        // Break the cycle that could cause a high CPU load
+        if (!$connected) {
+            usleep($this->reconnectDelay * 1e6);
+            $this->reconnectDelay = min($this->reconnectDelay * $this->reconnectDecay, $this->maxReconnectDelay);
+        } else {
+            $this->reconnectDelay = 1.0;
+        }
+
+        return $connected;
     }
 
 }
