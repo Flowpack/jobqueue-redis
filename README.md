@@ -36,10 +36,10 @@ Flowpack:
 
 The `RedisQueue` supports following options:
 
-| Option                  | Type    | Default                                                  | Description                              |
-| ----------------------- |---------| --------------------------------------------------------:| ---------------------------------------- |
-| defaultTimeout          | integer | 60                                                       | Number of seconds new messages are waited for before a timeout occurs (This is overridden by a "timeout" argument in the `waitAndTake()` and `waitAndReserve()` methods |
-| client                  | array   | ['host' => '127.0.0.1', 'port' => 6379, 'database' => 0] | Redis connection settings |
+| Option                  | Type    | Default                                                                                       | Description                              |
+| ----------------------- |---------| ---------------------------------------------------------------------------------------------:| ---------------------------------------- |
+| defaultTimeout          | integer | 60                                                                                            | Number of seconds new messages are waited for before a timeout occurs (This is overridden by a "timeout" argument in the `waitAndTake()` and `waitAndReserve()` methods |
+| client                  | array   | ['host' => '127.0.0.1', 'port' => 6379, 'database' => 0, 'timeout' => <defaultTimeout * 1.5>] | Redis connection settings |
 
 ### Submit options
 
