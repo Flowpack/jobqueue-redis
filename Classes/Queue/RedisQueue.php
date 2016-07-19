@@ -119,8 +119,8 @@ class RedisQueue implements QueueInterface
     public function release($messageId, array $options = [])
     {
         $this->client->lRem("queue:{$this->name}:processing", $messageId, 0);
-        $numberOfFailures = (integer)$this->client->hGet("queue:{$this->name}:failures", $messageId);
-        $this->client->hSet("queue:{$this->name}:failures", $messageId, $numberOfFailures + 1);
+        $numberOfReleases = (integer)$this->client->hGet("queue:{$this->name}:releases", $messageId);
+        $this->client->hSet("queue:{$this->name}:releases", $messageId, $numberOfReleases + 1);
         $this->client->lPush("queue:{$this->name}:messages", $messageId);
     }
 
@@ -141,7 +141,7 @@ class RedisQueue implements QueueInterface
     public function finish($messageId)
     {
         $this->client->hDel("queue:{$this->name}:ids", $messageId);
-        $this->client->hDel("queue:{$this->name}:failures", $messageId);
+        $this->client->hDel("queue:{$this->name}:releases", $messageId);
         return $this->client->lRem("queue:{$this->name}:processing", $messageId, 0) > 0;
     }
 
@@ -196,7 +196,7 @@ class RedisQueue implements QueueInterface
             return null;
         }
         $encodedPayload = $this->client->hGet("queue:{$this->name}:ids", $messageId);
-        $numberOfFailures = (integer)$this->client->hGet("queue:{$this->name}:failures", $messageId);
-        return new Message($messageId, json_decode($encodedPayload, true), $numberOfFailures);
+        $numberOfReleases = (integer)$this->client->hGet("queue:{$this->name}:releases", $messageId);
+        return new Message($messageId, json_decode($encodedPayload, true), $numberOfReleases);
     }
 }
