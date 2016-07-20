@@ -10,8 +10,8 @@ Install the package using composer:
 composer require flowpack/jobqueue-redis
 ```
 
-If not already installed, that fetch its requirements, namely `jobqueue-common`.
-*NOTE:* This package requires the [PHP redis extension](https://github.com/phpredis/phpredis) to be installed
+If not already installed, that will fetch its requirements, namely `jobqueue-common`.
+*NOTE:* This package needs a [redis](http://redis.io/) server and the [PHP redis extension](https://github.com/phpredis/phpredis) to be installed
 
 Now the queue can be configured like this:
 
