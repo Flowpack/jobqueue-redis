@@ -1,6 +1,6 @@
 {
     "name": "flowpack/jobqueue-redis",
-    "type": "typo3-flow-package",
+    "type": "neos-package",
     "description": "Implements concrete Queue for the redis work queue. Requires the packages flowpack/jobqueue-common and the redis PHP extension to be installed.",
     "license": "MIT",
     "require": {
