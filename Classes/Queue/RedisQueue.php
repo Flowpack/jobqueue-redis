@@ -13,7 +13,7 @@ namespace Flowpack\JobQueue\Redis\Queue;
 
 use Flowpack\JobQueue\Common\Queue\Message;
 use Flowpack\JobQueue\Common\Queue\QueueInterface;
-use TYPO3\Flow\Utility\Algorithms;
+use Neos\Flow\Utility\Algorithms;
 use Flowpack\JobQueue\Common\Exception as JobQueueException;
 
 /**
