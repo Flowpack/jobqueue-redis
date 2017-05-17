@@ -94,7 +94,7 @@ class RedisQueue implements QueueInterface
         $messageId = Algorithms::generateUUID();
         $idStored = $this->client->hSet("queue:{$this->name}:ids", $messageId, json_encode($payload));
         if ($idStored === 0) {
-            return null;
+            throw new JobQueueException(sprintf('Duplicate message id: "%s"', $messageId), 1470656350);
         }
 
         $this->client->lPush("queue:{$this->name}:messages", $messageId);
@@ -141,10 +141,11 @@ class RedisQueue implements QueueInterface
     public function release($messageId, array $options = [])
     {
         $this->checkClientConnection();
-        $this->client->lRem("queue:{$this->name}:processing", $messageId, 0);
-        $numberOfReleases = (integer)$this->client->hGet("queue:{$this->name}:releases", $messageId);
-        $this->client->hSet("queue:{$this->name}:releases", $messageId, $numberOfReleases + 1);
-        $this->client->lPush("queue:{$this->name}:messages", $messageId);
+        $this->client->multi()
+            ->lRem("queue:{$this->name}:processing", $messageId, 0)
+            ->hIncrBy("queue:{$this->name}:releases", $messageId, 1)
+            ->lPush("queue:{$this->name}:messages", $messageId)
+            ->exec();
     }
 
     /**
@@ -165,9 +166,10 @@ class RedisQueue implements QueueInterface
     public function finish($messageId)
     {
         $this->checkClientConnection();
+        $numberOfRemoved = $this->client->lRem("queue:{$this->name}:processing", $messageId, 0);
         $this->client->hDel("queue:{$this->name}:ids", $messageId);
         $this->client->hDel("queue:{$this->name}:releases", $messageId);
-        return $this->client->lRem("queue:{$this->name}:processing", $messageId, 0) > 0;
+        return $numberOfRemoved > 0;
     }
 
     /**
