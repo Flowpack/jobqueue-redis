@@ -193,14 +193,33 @@ class RedisQueue implements QueueInterface
     /**
      * @inheritdoc
      */
-    public function count()
+    public function countReady(): int
     {
         $this->checkClientConnection();
         return $this->client->lLen("queue:{$this->name}:messages");
     }
 
     /**
+     * @inheritdoc
+     */
+    public function countReserved(): int
+    {
+        $this->checkClientConnection();
+        return $this->client->lLen("queue:{$this->name}:processing");
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function countFailed(): int
+    {
+        $this->checkClientConnection();
+        return $this->client->lLen("queue:{$this->name}:failed");
+    }
+
+    /**
      * @return void
+     * @throws JobQueueException
      */
     public function setUp()
     {
