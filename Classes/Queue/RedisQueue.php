@@ -80,15 +80,16 @@ class RedisQueue implements QueueInterface
     /**
      * @inheritdoc
      */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
-    public function submit($payload, array $options = [])
+    public function submit($payload, array $options = []): string
     {
         $this->checkClientConnection();
         $messageId = Algorithms::generateUUID();
@@ -103,8 +104,9 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
-    public function waitAndTake($timeout = null)
+    public function waitAndTake(?int $timeout = null): ?Message
     {
         if ($timeout === null) {
             $timeout = $this->defaultTimeout;
@@ -124,8 +126,9 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
-    public function waitAndReserve($timeout = null)
+    public function waitAndReserve(?int $timeout = null): ?Message
     {
         if ($timeout === null) {
             $timeout = $this->defaultTimeout;
@@ -137,8 +140,9 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
-    public function release($messageId, array $options = [])
+    public function release(string $messageId, array $options = []): void
     {
         $this->checkClientConnection();
         $this->client->multi()
@@ -150,8 +154,9 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
-    public function abort($messageId)
+    public function abort(string $messageId): void
     {
         $this->checkClientConnection();
         $numberOfRemoved = $this->client->lRem("queue:{$this->name}:processing", $messageId, 0);
@@ -162,8 +167,9 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
-    public function finish($messageId)
+    public function finish(string $messageId): bool
     {
         $this->checkClientConnection();
         $numberOfRemoved = $this->client->lRem("queue:{$this->name}:processing", $messageId, 0);
@@ -174,8 +180,9 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
-    public function peek($limit = 1)
+    public function peek(int $limit = 1): array
     {
         $this->checkClientConnection();
         $result = $this->client->lRange("queue:{$this->name}:messages", -($limit), -1);
@@ -192,6 +199,7 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
     public function countReady(): int
     {
@@ -201,6 +209,7 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
     public function countReserved(): int
     {
@@ -210,6 +219,7 @@ class RedisQueue implements QueueInterface
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
     public function countFailed(): int
     {
@@ -221,15 +231,16 @@ class RedisQueue implements QueueInterface
      * @return void
      * @throws JobQueueException
      */
-    public function setUp()
+    public function setUp(): void
     {
         $this->checkClientConnection();
     }
 
     /**
      * @inheritdoc
+     * @throws JobQueueException
      */
-    public function flush()
+    public function flush(): void
     {
         $this->checkClientConnection();
         $this->client->flushDB();
@@ -239,7 +250,7 @@ class RedisQueue implements QueueInterface
      * @param string $messageId
      * @return Message
      */
-    protected function getMessageById($messageId)
+    protected function getMessageById(string $messageId): ?Message
     {
         if (!is_string($messageId)) {
             return null;
