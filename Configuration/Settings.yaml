@@ -3,8 +3,14 @@ Flowpack:
     Redis:
       testing:
         # Set to TRUE to enable functional testing against a Redis server
-        # enabled: TRUE
+        enabled: TRUE
         client:
           host: 127.0.0.1
           port: 6379
+          database: 15
+        # Set password in your redis config
+        passwordProtectedClient:
+          host: 127.0.0.1
+          port: 6379
+          password: 'My_Secret_Password'
           database: 15

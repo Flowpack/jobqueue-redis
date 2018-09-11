@@ -296,10 +296,21 @@ class RedisQueue implements QueueInterface
     {
         $host = isset($this->clientOptions['host']) ? $this->clientOptions['host'] : '127.0.0.1';
         $port = isset($this->clientOptions['port']) ? $this->clientOptions['port'] : 6379;
+        $password = isset($this->clientOptions['password']) ? $this->clientOptions['password'] : '';
         $database = isset($this->clientOptions['database']) ? $this->clientOptions['database'] : 0;
         // The connection read timeout should be higher than the timeout for blocking operations!
         $timeout = isset($this->clientOptions['timeout']) ? $this->clientOptions['timeout'] : round($this->defaultTimeout * 1.5);
-        $connected = $this->client->connect($host, $port, $timeout) && $this->client->select($database);
+
+        $connected = $this->client->connect($host, $port, $timeout);
+        if ($connected) {
+            if($password !== '') {
+                if (!$this->client->auth($password)) {
+                    throw new JobQueueException('Redis authentication failed.', 1502366245);
+                }
+            }
+            $connected = $this->client->select($database);
+        }
+
         // Break the cycle that could cause a high CPU load
         if (!$connected) {
             usleep($this->reconnectDelay * 1e6);
