@@ -3,7 +3,7 @@ Flowpack:
     Redis:
       testing:
         # Set to TRUE to enable functional testing against a Redis server
-        enabled: TRUE
+        # enabled: TRUE
         client:
           host: 127.0.0.1
           port: 6379

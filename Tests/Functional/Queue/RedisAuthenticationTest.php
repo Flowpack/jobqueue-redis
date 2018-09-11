@@ -61,7 +61,6 @@ class RedisAuthenticationTest extends FunctionalTestCase
     }
 
     /**
-     * In this testcase we use the password 'Horst_Schimanski'
      * @test
      */
     public function testConnectionByAddingAMessage()
