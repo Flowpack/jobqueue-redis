@@ -23,7 +23,6 @@ use Flowpack\JobQueue\Common\Exception as JobQueueException;
  */
 class RedisQueue implements QueueInterface
 {
-
     /**
      * @var string
      */
@@ -303,9 +302,9 @@ class RedisQueue implements QueueInterface
 
         $connected = $this->client->connect($host, $port, $timeout);
         if ($connected) {
-            if($password !== '') {
+            if ($password !== '') {
                 if (!$this->client->auth($password)) {
-                    throw new JobQueueException('Redis authentication failed.', 1502366245);
+                    throw new JobQueueException('Redis authentication failed.', 1536735535);
                 }
             }
             $connected = $this->client->select($database);
