@@ -303,7 +303,8 @@ class RedisQueue implements QueueInterface
         $connected = $this->client->connect($host, $port, $timeout);
         if ($connected) {
             if ($password !== '') {
-                if (!$this->client->auth($password)) {
+                $authSuccess = $this->client->auth($password);
+                if ($authSuccess !== true) {
                     throw new JobQueueException('Redis authentication failed.', 1536735535);
                 }
             }
