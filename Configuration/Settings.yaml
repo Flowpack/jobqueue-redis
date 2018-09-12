@@ -8,3 +8,9 @@ Flowpack:
           host: 127.0.0.1
           port: 6379
           database: 15
+        # Set password in your redis config
+        passwordProtectedClient:
+          host: 127.0.0.1
+          port: 6379
+          password: 'My_Secret_Password'
+          database: 15
