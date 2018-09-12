@@ -22,7 +22,6 @@ use Neos\Utility\TypeHandling;
  */
 class RedisAuthenticationTest extends FunctionalTestCase
 {
-
     /**
      * @var QueueInterface
      */
