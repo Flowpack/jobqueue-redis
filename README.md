@@ -11,6 +11,7 @@ composer require flowpack/jobqueue-redis
 ```
 
 If not already installed, that will fetch its requirements, namely `jobqueue-common`.
+
 *NOTE:* This package needs a [redis](http://redis.io/) server and the [PHP redis extension](https://github.com/phpredis/phpredis) to be installed
 
 Now the queue can be configured like this:
@@ -28,6 +29,7 @@ Flowpack:
               host: 127.0.0.1
               port: 6379
               database: 15
+              password: 'some long secret'
             defaultTimeout: 20
 ```
 
@@ -36,10 +38,10 @@ Flowpack:
 
 The `RedisQueue` supports following options:
 
-| Option                  | Type    | Default                                                                                       | Description                              |
-| ----------------------- |---------| ---------------------------------------------------------------------------------------------:| ---------------------------------------- |
-| defaultTimeout          | integer | 60                                                                                            | Number of seconds new messages are waited for before a timeout occurs (This is overridden by a "timeout" argument in the `waitAndTake()` and `waitAndReserve()` methods |
-| client                  | array   | ['host' => '127.0.0.1', 'port' => 6379, 'database' => 0, 'timeout' => <defaultTimeout * 1.5>] | Redis connection settings |
+| Option         | Type    | Default                                                                                                        | Description                                                                                                                                                             |
+|----------------|---------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| defaultTimeout | integer | 60                                                                                                             | Number of seconds new messages are waited for before a timeout occurs (This is overridden by a "timeout" argument in the `waitAndTake()` and `waitAndReserve()` methods |
+| client         | array   |  ['host' => '127.0.0.1', 'port' => 6379, 'database' => 0, 'timeout' => <defaultTimeout * 1.5>, password => ''] | Redis connection settings                                                                                                                                               |
 
 ### Submit options
 
