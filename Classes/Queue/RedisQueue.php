@@ -134,6 +134,9 @@ class RedisQueue implements QueueInterface
         }
         $this->checkClientConnection();
         $messageId = $this->client->brpoplpush("queue:{$this->name}:messages", "queue:{$this->name}:processing", $timeout);
+        if ($messageId === false) {
+            return null;
+        }
         return $this->getMessageById($messageId);
     }
 
