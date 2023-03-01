@@ -40,7 +40,7 @@ class RedisAuthenticationTest extends FunctionalTestCase
     /**
      * Set up dependencies
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
         $configurationManager = $this->objectManager->get(ConfigurationManager::class);
